@@ -2,6 +2,11 @@
 
 เกมสำหรับห้องอบรมความปลอดภัย ผู้เล่นต้องชี้จุดอันตรายในภาพพื้นที่ทำงานทั้ง **Unsafe Act (UA)** และ **Unsafe Condition (UC)** ให้ครบก่อนระเบิดเวลาจะระเบิด
 
+**▶ เล่นออนไลน์:** https://manuchatip1998-bot.github.io/hazard-hunt/
+
+## GitHub Pages
+ทุกครั้งที่ push ขึ้น branch `main` ระบบ GitHub Actions ([.github/workflows/pages.yml](.github/workflows/pages.yml)) จะนำโฟลเดอร์ `public/` ขึ้นเว็บให้อัตโนมัติภายใน 1–2 นาที ดูสถานะได้ที่แท็บ **Actions** ของ repo
+
 ## เปิดเล่นในเครื่อง
 ดับเบิลคลิก `public/index.html` เพื่อเปิดใน Chrome หรือ Edge ได้เลย ไม่ต้องติดตั้งโปรแกรมและเล่นแบบออฟไลน์ได้
 - กด **F** เพื่อเต็มจอก่อนขึ้นโปรเจกเตอร์
