@@ -40,27 +40,56 @@
   })();
 
   /* ---------- setup ---------- */
+  // campaign: levels are played in order; a level opens once the previous one is cleared with 3 stars
+  const playableLevels = async () => (await Store.listLevels()).filter((l) => l.hazards.length);
+  const teamName = () => $('inp-team').value.trim() || 'ผู้เล่น';
+
   async function renderSetup() {
-    const levels = await Store.listLevels();
+    $('inp-team').value = $('inp-team').value || Store.pref('team') || '';
+    const levels = await playableLevels();
+    const team = teamName();
+    const cleared = Store.getCleared(team);
+    const openTo = Store.unlockedUpTo(levels, team);
     const grid = $('level-grid');
     grid.innerHTML = '';
     if (!levels.length) grid.innerHTML = '<p>ยังไม่มีด่าน – ไปที่ “สร้าง / แก้ไขด่าน” เพื่อเพิ่ม</p>';
-    if (!levels.find((l) => l.id === selectedLevel)) selectedLevel = levels[0] && levels[0].id;
+    const selIdx = levels.findIndex((l) => l.id === selectedLevel);
+    if (selIdx === -1 || selIdx > openTo) selectedLevel = levels[openTo] && levels[openTo].id;
+    const doneCount = levels.filter((l) => cleared.has(l.id)).length;
+    $('progress-info').innerHTML = levels.length
+      ? `<b>${esc(team)}</b> ผ่านแล้ว <b>${doneCount}/${levels.length}</b> ด่าน · ต้องได้ ⭐⭐⭐ เพื่อปลดล็อกด่านถัดไป`
+      : '';
+    $('btn-reset-progress').hidden = !doneCount;
     levels.forEach((lv, i) => {
       const ua = lv.hazards.filter((h) => h.type === 'UA').length;
+      const locked = i > openTo, done = cleared.has(lv.id);
       const c = document.createElement('div');
-      c.className = 'level-card' + (lv.id === selectedLevel ? ' active' : '');
+      c.className = 'level-card' + (lv.id === selectedLevel ? ' active' : '') + (locked ? ' locked' : '') + (done ? ' done' : '');
       c.style.animation = `listIn .4s ${i * 0.06}s both`;
-      c.innerHTML = `<div class="thumb"></div><div class="meta"><b>${esc(lv.name)}</b>
+      c.innerHTML = `<div class="thumb"><span class="lv-num">ด่าน ${i + 1}</span>${locked ? '<span class="lv-lock">🔒</span>' : ''}${done ? '<span class="lv-done">⭐⭐⭐</span>' : ''}</div><div class="meta"><b>${esc(lv.name)}</b>
         <small>${lv.hazards.length} จุด · <i class="tag ua">UA ${ua}</i> <i class="tag uc">UC ${lv.hazards.length - ua}</i> · ${lv.timeLimit || 90} วิ</small></div>`;
       c.querySelector('.thumb').style.backgroundImage = `url("${lv.image}")`;
-      c.onclick = () => { selectedLevel = lv.id; Store.pref('level', lv.id); Sfx.click(); renderSetup(); };
+      c.onclick = () => {
+        if (locked) {
+          Sfx.wrong(); Fx.shake(c);
+          Fx.toast(`🔒 ต้องเล่นตามลำดับ · ให้ได้ ⭐⭐⭐ ในด่าน ${openTo + 1}: ${levels[openTo].name} ก่อน`);
+          return;
+        }
+        selectedLevel = lv.id; Store.pref('level', lv.id); Sfx.click(); renderSetup();
+      };
       grid.appendChild(c);
     });
     document.querySelectorAll('#time-chips .chip').forEach((ch) => ch.classList.toggle('active', ch.dataset.time === String(timeChoice)));
     if (!document.querySelector('#time-chips .chip.active')) $('inp-time').value = timeChoice;
-    $('inp-team').value = $('inp-team').value || Store.pref('team') || '';
   }
+  // progress is per team: re-render the lock state as the team name is typed
+  let teamTimer = 0;
+  $('inp-team').addEventListener('input', () => { clearTimeout(teamTimer); teamTimer = setTimeout(renderSetup, 250); });
+  $('btn-reset-progress').onclick = () => {
+    const team = teamName();
+    if (!confirm(`รีเซ็ตความคืบหน้าของ “${team}” ให้เริ่มที่ด่าน 1 ใหม่?`)) return;
+    Store.resetProgress(team); selectedLevel = null; renderSetup();
+  };
   $('time-chips').addEventListener('click', (e) => {
     const ch = e.target.closest('.chip'); if (!ch) return;
     timeChoice = ch.dataset.time; Store.pref('time', timeChoice); $('inp-time').value = '';
@@ -75,7 +104,11 @@
     const lv = selectedLevel && await Store.getLevel(selectedLevel);
     if (!lv) return Fx.toast('เลือกด่านก่อน');
     if (!lv.hazards.length) return Fx.toast('ด่านนี้ยังไม่มีจุดอันตราย');
-    const team = $('inp-team').value.trim() || 'ผู้เล่น';
+    const team = teamName();
+    const levels = await playableLevels();
+    if (levels.findIndex((l) => l.id === lv.id) > Store.unlockedUpTo(levels, team)) {
+      renderSetup(); return Fx.toast('🔒 ด่านนี้ยังล็อกอยู่สำหรับทีมนี้');
+    }
     Store.pref('team', team);
     const time = timeChoice === 'level' ? (lv.timeLimit || 90) : Number(timeChoice) || 90;
     play(lv, { team, time, levelTime: timeChoice === 'level' });
@@ -120,7 +153,8 @@
     btnNext.hidden = true; nextInfo.textContent = ''; nextInfo.className = 'res-next';
     btnDebrief.classList.add('btn-primary');
     if (res.stars < 3 || !current || current.opts.fromEditor) return;
-    const levels = (await Store.listLevels()).filter((l) => l.hazards.length);
+    Store.markCleared(current.opts.team, res.levelId);
+    const levels = await playableLevels();
     const idx = levels.findIndex((l) => l.id === res.levelId);
     if (Game.lastResult !== res) return; // a new game already started
     if (idx === -1 || idx === levels.length - 1) {
@@ -130,6 +164,7 @@
       return;
     }
     nextLevel = levels[idx + 1];
+    selectedLevel = nextLevel.id; Store.pref('level', nextLevel.id); // setup screen opens on the newly unlocked level
     btnNext.textContent = '▶ ด่านต่อไป: ' + nextLevel.name;
     btnNext.hidden = false;
     btnDebrief.classList.remove('btn-primary');

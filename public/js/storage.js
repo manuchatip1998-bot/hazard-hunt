@@ -135,6 +135,25 @@
     },
     clearBoard(levelId) { ls('hh_lb_' + levelId, null); },
 
+    /* ---- campaign progress (levels cleared with 3 stars), per team name ---- */
+    progressKey(team) { return 'hh_prog_' + String(team || 'ผู้เล่น').trim().toLowerCase(); },
+    getCleared(team) {
+      try { return new Set(JSON.parse(ls(Store.progressKey(team)) || '[]')); } catch (e) { return new Set(); }
+    },
+    markCleared(team, levelId) {
+      const s = Store.getCleared(team);
+      s.add(levelId);
+      ls(Store.progressKey(team), JSON.stringify([...s]));
+    },
+    resetProgress(team) { ls(Store.progressKey(team), null); },
+    // index of the furthest playable level: level i is open when every level before it is cleared
+    unlockedUpTo(levels, team) {
+      const cleared = Store.getCleared(team);
+      let i = 0;
+      while (i < levels.length - 1 && cleared.has(levels[i].id)) i++;
+      return i;
+    },
+
     pref(key, val) {
       if (val === undefined) return ls('hh_pref_' + key);
       ls('hh_pref_' + key, String(val));
