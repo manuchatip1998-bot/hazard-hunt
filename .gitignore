@@ -1,0 +1,11 @@
+# Firebase
+.firebase/
+firebase-debug.log*
+# Node / tools
+node_modules/
+npm-debug.log*
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/

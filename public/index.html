@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hazard Hunt – ล่าจุดเสี่ยง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;800&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ========== MENU ========== -->
+  <section id="scr-menu" class="screen active">
+    <div class="menu-bg" aria-hidden="true"></div>
+    <div class="menu-box">
+      <div class="logo">
+        <div class="logo-icon">⚠</div>
+        <h1><span class="l1">HAZARD</span> <span class="l2">HUNT</span></h1>
+        <p class="logo-sub">เกมล่าจุดเสี่ยง · Unsafe Act &amp; Unsafe Condition</p>
+      </div>
+      <div class="menu-buttons">
+        <button class="btn btn-big btn-primary" data-go="setup">💣 เริ่มเกม Time Attack</button>
+        <button class="btn btn-big" data-go="editor">🛠 สร้าง / แก้ไขด่าน</button>
+        <button class="btn btn-big" data-go="board">🏆 ตารางอันดับ</button>
+        <button class="btn btn-big btn-ghost" id="btn-help">❓ วิธีเล่น</button>
+      </div>
+      <p class="menu-foot">กด <kbd>F</kbd> เต็มจอ · <kbd>M</kbd> ปิด/เปิดเสียง</p>
+    </div>
+  </section>
+
+  <!-- ========== SETUP ========== -->
+  <section id="scr-setup" class="screen">
+    <div class="page">
+      <div class="page-head">
+        <button class="btn btn-ghost" data-go="menu">← กลับ</button>
+        <h2>เลือกด่าน</h2>
+        <span></span>
+      </div>
+      <div id="level-grid" class="level-grid"></div>
+      <div class="setup-bar">
+        <label class="field">
+          <span>ชื่อทีม / ผู้เล่น</span>
+          <input id="inp-team" type="text" maxlength="30" placeholder="เช่น ทีม A">
+        </label>
+        <div class="field">
+          <span>เวลา (วินาที)</span>
+          <div class="chips" id="time-chips">
+            <button class="chip" data-time="level">ตามด่าน</button>
+            <button class="chip" data-time="60">60</button>
+            <button class="chip" data-time="90">90</button>
+            <button class="chip" data-time="120">120</button>
+            <input id="inp-time" type="number" min="15" max="900" placeholder="กำหนดเอง">
+          </div>
+        </div>
+        <button class="btn btn-big btn-primary" id="btn-start">เริ่ม! 💥</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== GAME ========== -->
+  <section id="scr-game" class="screen">
+    <header class="hud">
+      <div class="hud-left">
+        <div class="hud-team" id="hud-team">ทีม</div>
+        <div class="hud-level" id="hud-level">ด่าน</div>
+      </div>
+      <div class="hud-center">
+        <svg id="bomb" class="bomb" viewBox="0 0 320 90" aria-hidden="true">
+          <path id="fuse-bg" d="M70 32 C 110 -5, 150 70, 190 30 S 270 10, 310 40" class="fuse-bg"/>
+          <path id="fuse" d="M70 32 C 110 -5, 150 70, 190 30 S 270 10, 310 40" class="fuse"/>
+          <g class="bomb-body">
+            <rect x="52" y="22" width="22" height="16" rx="3" class="bomb-cap"/>
+            <circle cx="45" cy="55" r="32" class="bomb-ball"/>
+            <ellipse cx="34" cy="42" rx="9" ry="6" class="bomb-shine"/>
+          </g>
+          <g id="spark" class="spark"><circle r="7" class="spark-core"/><circle r="13" class="spark-glow"/></g>
+        </svg>
+        <div class="timer" id="timer">60.0</div>
+      </div>
+      <div class="hud-right">
+        <div class="stat"><small>คะแนน</small><b id="hud-score">0</b></div>
+        <div class="stat"><small>พบแล้ว</small><b id="hud-found">0/0</b>
+          <span class="mini"><i class="tag ua">UA <em id="hud-ua">0/0</em></i><i class="tag uc">UC <em id="hud-uc">0/0</em></i></span>
+        </div>
+        <div class="stat combo" id="hud-combo"><small>คอมโบ</small><b id="hud-combo-v">x1</b></div>
+        <div class="hud-btns">
+          <button class="btn btn-sm" id="btn-hint" title="คำใบ้ (H) −10 วิ">💡</button>
+          <button class="btn btn-sm" id="btn-pause" title="หยุด (Space)">⏸</button>
+          <button class="btn btn-sm" id="btn-quit" title="ออก (Esc)">✕</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="stage-wrap" class="stage-wrap">
+      <div id="stage" class="stage">
+        <img id="stage-img" alt="ภาพพื้นที่ทำงาน" draggable="false">
+        <div id="markers" class="markers"></div>
+      </div>
+    </div>
+
+    <div id="hazard-card" class="hazard-card"></div>
+    <div id="danger-vignette" class="danger-vignette"></div>
+    <div id="countdown" class="countdown"></div>
+    <div id="banner" class="banner"></div>
+
+    <div id="pause-overlay" class="overlay">
+      <div class="modal">
+        <h2>⏸ หยุดชั่วคราว</h2>
+        <div class="modal-btns">
+          <button class="btn btn-primary btn-big" id="btn-resume">เล่นต่อ</button>
+          <button class="btn" id="btn-reveal">เฉลยทั้งหมด (R)</button>
+          <button class="btn btn-ghost" id="btn-quit2">ออกไปเมนู</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="result-overlay" class="overlay">
+      <div class="modal result">
+        <h2 id="res-title">ผลการเล่น</h2>
+        <div class="stars" id="res-stars"><span>★</span><span>★</span><span>★</span></div>
+        <div class="res-grid">
+          <div><small>พบจุดเสี่ยง</small><b id="res-found">0/0</b></div>
+          <div><small>คะแนน</small><b id="res-score">0</b></div>
+          <div><small>โบนัสเวลา</small><b id="res-bonus">0</b></div>
+        </div>
+        <div class="res-next" id="res-next"></div>
+        <div class="modal-btns">
+          <button class="btn btn-primary btn-big btn-next" id="btn-next" hidden>▶ ด่านต่อไป</button>
+          <button class="btn btn-primary btn-big" id="btn-debrief">📋 ดูสรุป / เฉลย</button>
+          <button class="btn" id="btn-again">🔁 เล่นอีกครั้ง</button>
+          <button class="btn" data-go="board">🏆 อันดับ</button>
+          <button class="btn btn-ghost" data-go="menu">เมนู</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== DEBRIEF ========== -->
+  <section id="scr-debrief" class="screen">
+    <div class="page page-wide">
+      <div class="page-head">
+        <button class="btn btn-ghost" data-go="menu">← เมนู</button>
+        <h2 id="deb-title">สรุปจุดเสี่ยง</h2>
+        <div class="chips">
+          <button class="btn" id="btn-deb-again">🔁 เล่นอีกครั้ง</button>
+          <button class="btn btn-primary btn-next" id="btn-deb-next" hidden>▶ ด่านต่อไป</button>
+        </div>
+      </div>
+      <div class="debrief">
+        <div class="deb-stage-wrap" id="deb-stage-wrap">
+          <div class="deb-stage" id="deb-stage">
+            <img id="deb-img" alt="" draggable="false">
+            <div id="deb-markers" class="markers"></div>
+          </div>
+        </div>
+        <div class="deb-side">
+          <div class="deb-summary" id="deb-summary"></div>
+          <ol class="deb-list" id="deb-list"></ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== LEADERBOARD ========== -->
+  <section id="scr-board" class="screen">
+    <div class="page">
+      <div class="page-head">
+        <button class="btn btn-ghost" data-go="menu">← กลับ</button>
+        <h2>🏆 ตารางอันดับ</h2>
+        <button class="btn btn-danger btn-sm" id="btn-board-clear">ล้างอันดับด่านนี้</button>
+      </div>
+      <div class="chips" id="board-tabs"></div>
+      <table class="board">
+        <thead><tr><th>#</th><th>ทีม</th><th>คะแนน</th><th>พบ</th><th>ดาว</th><th>เวลา</th></tr></thead>
+        <tbody id="board-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== EDITOR ========== -->
+  <section id="scr-editor" class="screen">
+    <div class="editor">
+      <aside class="ed-levels">
+        <div class="ed-head">
+          <button class="btn btn-ghost btn-sm" data-go="menu">← เมนู</button>
+          <b>ด่านทั้งหมด</b>
+        </div>
+        <ul id="ed-level-list" class="ed-level-list"></ul>
+        <div class="ed-col-btns">
+          <button class="btn btn-primary btn-sm" id="ed-new">＋ ด่านใหม่</button>
+          <button class="btn btn-sm" id="ed-import">⬆ Import .json</button>
+          <button class="btn btn-sm" id="ed-export-all">⬇ Export ทั้งหมด</button>
+          <button class="btn btn-ghost btn-sm" id="ed-restore">คืนค่าด่านตัวอย่าง</button>
+          <input type="file" id="ed-import-file" accept=".json,application/json" hidden>
+        </div>
+      </aside>
+
+      <main class="ed-main">
+        <div class="ed-toolbar">
+          <input id="ed-name" class="ed-name" type="text" placeholder="ชื่อด่าน">
+          <label class="ed-time">เวลา <input id="ed-time" type="number" min="15" max="900"> วิ</label>
+          <div class="chips" id="ed-tools">
+            <button class="chip active" data-tool="select" title="เลือก/ย้าย">🖱 เลือก</button>
+            <button class="chip" data-tool="circle" title="ลากเพื่อวาดวงกลม">◯ วงกลม</button>
+            <button class="chip" data-tool="rect" title="ลากเพื่อวาดสี่เหลี่ยม">▭ สี่เหลี่ยม</button>
+          </div>
+          <button class="btn btn-sm" id="ed-upload">🖼 รูป</button>
+          <input type="file" id="ed-upload-file" accept="image/*" hidden>
+          
+          <button class="btn btn-sm" id="ed-export">⬇ Export</button>
+          <button class="btn btn-sm" id="ed-test">▶ ทดลองเล่น</button>
+          <button class="btn btn-primary btn-sm" id="ed-save">💾 บันทึก</button>
+        </div>
+        <div class="ed-canvas-wrap" id="ed-canvas-wrap">
+          <div class="ed-empty" id="ed-empty">เลือกด่านทางซ้าย หรือกด “＋ ด่านใหม่” แล้วอัปโหลดรูปพื้นที่ทำงาน</div>
+          <div class="ed-stage" id="ed-stage">
+            <img id="ed-img" alt="" draggable="false">
+            <svg id="ed-svg" class="ed-svg"></svg>
+          </div>
+        </div>
+        <p class="ed-tip">เคล็ดลับ: เลือกเครื่องมือวงกลม/สี่เหลี่ยมแล้วลากบนภาพ · โหมดเลือก: ลากเพื่อย้าย, ลากจุดมุมเพื่อปรับขนาด · กด <kbd>Delete</kbd> เพื่อลบจุด</p>
+      </main>
+
+      <aside class="ed-props">
+        <b>จุดอันตราย <span id="ed-count"></span></b>
+        <ul id="ed-hz-list" class="ed-hz-list"></ul>
+        <form id="ed-form" class="ed-form" onsubmit="return false">
+          <label>ชื่อจุด<input id="f-title" type="text" placeholder="เช่น น้ำมันหกบนพื้น"></label>
+          <div class="type-pick">
+            <label><input type="radio" name="f-type" value="UA"> <i class="tag ua">Unsafe Act</i></label>
+            <label><input type="radio" name="f-type" value="UC"> <i class="tag uc">Unsafe Condition</i></label>
+          </div>
+          <label>ความเสี่ยง / คำอธิบาย<textarea id="f-desc" rows="3"></textarea></label>
+          <label>วิธีแก้ไข / ป้องกัน<textarea id="f-fix" rows="3"></textarea></label>
+          <label>คะแนน<input id="f-points" type="number" min="10" step="10"></label>
+          <button class="btn btn-danger btn-sm" id="f-delete" type="button">🗑 ลบจุดนี้</button>
+        </form>
+        <p class="ed-noselect" id="ed-noselect">ยังไม่ได้เลือกจุด – วาดโซนบนภาพหรือคลิกรายการด้านบน</p>
+        <hr>
+        <button class="btn btn-danger btn-sm" id="ed-delete-level">ลบด่านนี้</button>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ========== HELP ========== -->
+  <div id="help-overlay" class="overlay">
+    <div class="modal help">
+      <h2>วิธีเล่น 💣</h2>
+      <ul>
+        <li>ระเบิดกำลังนับถอยหลัง! คลิกหรือแตะ <b>จุดอันตราย</b> ในภาพให้ครบก่อนหมดเวลา</li>
+        <li><i class="tag ua">UA</i> <b>Unsafe Act</b> = การกระทำที่ไม่ปลอดภัยของคน &nbsp; <i class="tag uc">UC</i> <b>Unsafe Condition</b> = สภาพแวดล้อมที่ไม่ปลอดภัย</li>
+        <li>ชี้ถูก <b>+5 วินาที</b> · ชี้ผิด <b>−5 วินาที</b> · ชี้ถูกติดกันภายใน 5 วิ ได้ <b>คอมโบ x2, x3</b></li>
+        <li>💡 คำใบ้ (H) แลกกับ −10 วินาที</li>
+        <li>หาครบ = กู้ระเบิดสำเร็จ เวลาที่เหลือกลายเป็นโบนัสคะแนน</li>
+      </ul>
+      <p class="keys"><kbd>Space</kbd> หยุด · <kbd>H</kbd> คำใบ้ · <kbd>R</kbd> เฉลย · <kbd>F</kbd> เต็มจอ · <kbd>M</kbd> เสียง · <kbd>Esc</kbd> เมนู</p>
+      <div class="modal-btns"><button class="btn btn-primary" id="btn-help-close">เข้าใจแล้ว!</button></div>
+    </div>
+  </div>
+
+  <canvas id="fx-canvas" class="fx-canvas"></canvas>
+  <div id="flash" class="flash"></div>
+  <div id="toast" class="toast"></div>
+  <button id="btn-sound" class="sound-btn" title="เสียง (M)">🔊</button>
+</div>
+
+<script src="js/storage.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/samples/factory.js"></script>
+<script src="js/samples/warehouse.js"></script>
+<script src="js/samples/construction.js"></script>
+<script src="js/samples/office.js"></script>
+<script src="js/samples/kitchen.js"></script>
+<script src="js/samples/lab.js"></script>
+<script src="js/samples/lab2.js"></script>
+<script src="js/samples/garage.js"></script>
+<script src="js/samples/welding.js"></script>
+<script src="js/samples/confined.js"></script>
+<script src="js/game.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
